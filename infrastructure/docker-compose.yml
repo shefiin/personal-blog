@@ -1,0 +1,63 @@
+services:
+  mongo-auth:
+    image: mongo:6
+    container_name: mongo-auth
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_auth_data:/data/db
+    networks:
+      - urbanfresh-network
+
+  
+  auth-service:
+    build: 
+      context: ../services/auth-service
+      dockerfile: Dockerfile.dev
+    container_name: auth-service
+    restart: always
+    volumes:
+      - ../services/auth-service:/app
+      - /app/node_modules
+    env_file: 
+      - ../services/auth-service/.env
+    depends_on:
+      - mongo-auth
+    networks:
+      - urbanfresh-network
+
+
+  api-gateway:
+    build: 
+      context: ../services/api-gateway
+      dockerfile: Dockerfile.dev
+    container_name: api-gateway
+    restart: always
+    env_file: 
+      - ../services/api-gateway/.env
+    ports: 
+      - "8000:8000"
+    depends_on: 
+      - auth-service
+    networks:
+      - urbanfresh-network         
+
+
+  redis-auth:
+    image: redis:alpine
+    container_name: redis-auth
+    ports:
+      - "6379:6379"
+    restart: always  
+    networks:
+      - urbanfresh-network
+
+
+volumes:
+  mongo_auth_data:
+
+networks:
+  urbanfresh-network:
+    driver: bridge
+    
