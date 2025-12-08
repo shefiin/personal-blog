@@ -23,10 +23,15 @@ app.use("/api/auth", authProxy);
 app.use("/api/admin/auth/login", authProxy); 
 app.use("/api/admin/mfa/verify", authProxy);
 app.use("/api/admin/auth/refresh", authProxy);
-app.use("/api/admin",
-    requireAdmin({ allowlist: ["127.0.0.1"] }),
-    authProxy
-);
+app.use("/api/admin/auth/logout", authProxy);
+app.use("/api/admin/auth/session", authProxy);
+ 
+app.use("/api/admin", (req, res, next) => {
+    if (req.path.startsWith("/auth")) {
+        return next(); 
+    }
+    return requireAdmin({ allowlist: ["127.0.0.1"] })(req, res, next);
+}, authProxy);
 
 
 const PORT = process.env.PORT || 8000;
@@ -34,3 +39,41 @@ const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
     console.log(`API Gateway running on port ${PORT}`);  
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

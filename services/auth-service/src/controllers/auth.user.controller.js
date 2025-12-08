@@ -1,42 +1,13 @@
 import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import { generateAccessToken, generateRefreshToken  } from "../utils/generateTokens.js";
+import { getUserCookieOptions, clearUserCookies } from "../utils/userCookies.js";
 import redis from "../config/redis.js";
 import jwt from "jsonwebtoken"
 
 
 const isProd = process.env.NODE_ENV === "production";
-
-const cookieOptionsAccess = {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: "strict",
-    maxAge: 15 * 60 * 1000,
-    path: "/"
-};
-
-const cookieOptionsRefresh = {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-    path: "/api/auth/refresh"
-};
-
-const clearCookieOptions = {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: "strict",
-    path: "/"
-  };
-  
-  const clearCookieRefreshOptions = {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: "strict",
-    path: "/api/auth/refresh "
-  };
-  
+const { accessOption, refreshOption } = getUserCookieOptions(isProd);
 
 
 export const refresh = async (req, res) => {
@@ -66,8 +37,8 @@ export const refresh = async (req, res) => {
             {EX: 7 * 24 * 60 * 60 }
         );
 
-        res.cookie("access_token", newAccessToken, cookieOptionsAccess);
-        res.cookie("refresh_token", newRefreshToken, cookieOptionsRefresh);
+        res.cookie("access_token", newAccessToken, accessOption);
+        res.cookie("refresh_token", newRefreshToken, refreshOption);
 
         res.json({ message: "Token refreshed" });
 
@@ -102,8 +73,8 @@ export const register = async (req, res) => {
             {EX: 7 * 24 * 60 * 60 }
         );
 
-        res.cookie("acces_token", accessToken, cookieOptionsAccess);
-        res.cookie("refresh_token", refreshToken, cookieOptionsRefresh);
+        res.cookie("acces_token", accessToken, accessOption);
+        res.cookie("refresh_token", refreshToken, refreshOption);
 
         res.status(201).json({
             message: "User registered",
@@ -135,8 +106,8 @@ export const login = async (req, res) => {
             {EX: 7 * 24 * 60 * 60 }
         );
 
-        res.cookie("access_token", accessToken, cookieOptionsAccess);
-        res.cookie("refresh_token", refreshToken, cookieOptionsRefresh);
+        res.cookie("access_token", accessToken, accessOption);
+        res.cookie("refresh_token", refreshToken, refreshOption);
 
         res.json({
             message: "Login success",
@@ -158,8 +129,7 @@ export const logout = async (req, res) => {
             await redis.del(`refresh:${decoded.id}`);
         }
 
-        res.clearCookie("access_token", clearCookieOptions);
-        res.clearCookie("refresh_token", clearCookieRefreshOptions);
+        clearUserCookies(res)
 
         return res.json({ message: "Logged out successfully" });
 

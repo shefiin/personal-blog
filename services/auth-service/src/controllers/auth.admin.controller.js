@@ -2,25 +2,12 @@ import User from "../models/user.model.js";
 import bcrypt from "bcrypt";
 import redis from "../config/redis.js";
 import { generateAccessToken, generateRefreshToken } from "../utils/generateTokens.js";
+import { getAdminCookieOptions, clearAdminCookies } from "../utils/AdminCookies.js";
 import jwt from "jsonwebtoken";
 
+
 const isProd = process.env.NODE_ENV === "production";
-
-const cookieOptionsAccess = {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: "strict",
-    maxAge: 15 * 60 * 1000,
-    path: "/"
-};
-
-const cookieOptionsRefresh = {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-    path: "/api/admin/auth/refresh"
-};
+const { accessOption, refreshOption } = getAdminCookieOptions(isProd);
 
 
 const  ADMIN_LOGIN_LIMIT = 5;
@@ -75,8 +62,8 @@ export const adminLogin = async (req, res) => {
             { EX: 7 * 24 * 60 * 60 }
         );
               
-        res.cookie("uf_admin_at", accessToken, cookieOptionsAccess);
-        res.cookie("uf_admin_rt", refreshToken, cookieOptionsRefresh);
+        res.cookie("uf_admin_at", accessToken, accessOption);
+        res.cookie("uf_admin_rt", refreshToken, refreshOption);
 
         res.json({ message: "Admin logged in successfully "});
     } catch(err){
@@ -122,8 +109,8 @@ export const refreshToken = async (req, res) => {
 
         const newAccessToken = generateAccessToken(admin);
 
-        res.cookie("uf_admin_at", newAccessToken, cookieOptionsAccess);
-        res.cookie("uf_admin_rt", newRefreshToken, cookieOptionsRefresh);
+        res.cookie("uf_admin_at", newAccessToken, accessOption);
+        res.cookie("uf_admin_rt", newRefreshToken, refreshOption);
 
         res.json({ message: "Admin token refreshed" });
 
@@ -132,3 +119,72 @@ export const refreshToken = async (req, res) => {
         res.status(500).json({ message: "Server error"})
     }
 }
+
+
+export const adminLogout = async (req, res) => {
+    try {
+        const token = req.cookies?.uf_admin_rt;
+
+        if(!token){
+            clearAdminCookies(res)
+            res.status(200).json({ message: "Admin logged out successfully" });
+        }
+
+        let payload;
+
+        try{
+            payload = jwt.verify(token, process.env.REFRESH_SECRET)
+        } catch(err){
+            clearAdminCookies(res)
+            res.status(200).json({ message: "Admin logged out successfully" })
+        }
+
+        const adminId = payload.id;
+        await redis.del(`admin:rt${adminId}`);
+
+        clearAdminCookies(res);
+
+        return res.status(200).json({ message: "Admin logged out successfully" });
+
+    } catch(err){
+        console.err("admin logout error:", err); 
+        return res.status(500).json({ message: "something wrong while logout admin" })
+    }
+};
+
+
+export const sessionCheck = async (req, res) => {
+    try {
+        const token = req.cookies?.uf_admin_rt;
+
+        if(!token){
+            return res.json({ loggedIn: false })
+        }
+
+        let payload;
+
+        try {
+            payload = jwt.verify(token, process.env.REFRESH_SECRET)
+        } catch(err){
+            return res.json({ loggedIn: false });
+        }
+
+        const storedRT = await redis.get(`admin:rt:${payload.id}`)
+        if(!storedRT){
+            return res.json({ loggedIn: false });
+        }
+
+        return res.json({ 
+            loggedIn: true,
+            admin: {
+                id: payload.id,
+                email: payload.email,
+                role: payload.role
+            }
+        });
+
+    } catch (err) {
+        console.error("Session check error:", err);
+        return res.status(500).json({ loggedIn: false });
+    }
+};

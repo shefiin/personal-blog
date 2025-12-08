@@ -16,7 +16,7 @@ export function requireAdmin(options = {}) {
                 req.cookies?.uf_admin_at ||
                 req.headers["authorization"]?.split(" ")[1];
 
-            if(!token) return res.status(401).json({ message: "Admin token missing" });
+            if(!token) return res.status(401).json({ message: "Admin token missing from gateway" });
             
             let payload;
 
