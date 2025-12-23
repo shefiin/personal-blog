@@ -1,7 +1,8 @@
 import jwt from "jsonwebtoken";
-import redis from "../config/redis.js"
+
 
 export const generateAccessToken = (user) => {
+    console.log("JWT_KEY in auth:", process.env.JWT_KEY);
     return jwt.sign(
         {id: user._id, email: user.email, role: user.role },
         process.env.JWT_KEY,

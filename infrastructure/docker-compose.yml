@@ -1,16 +1,26 @@
 services:
-  mongo-auth:
+  mongodb:
     image: mongo:6
-    container_name: mongo-auth
+    container_name: mongodb
     restart: always
     ports:
       - "27017:27017"
     volumes:
-      - mongo_auth_data:/data/db
+      - mongo_data:/data/db
     networks:
       - urbanfresh-network
-
   
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    restart: always  
+    networks:
+      - urbanfresh-network
+    
+
   auth-service:
     build: 
       context: ../services/auth-service
@@ -25,7 +35,8 @@ services:
     env_file: 
       - ../services/auth-service/.env
     depends_on:
-      - mongo-auth
+      - mongodb
+      - redis
     networks:
       - urbanfresh-network
 
@@ -40,26 +51,118 @@ services:
       - ../services/api-gateway/.env
     ports: 
       - "8000:8000"
+    volumes:
+      - ../services/api-gateway:/app
+      - /app/node_modules  
     depends_on: 
       - auth-service
     networks:
-      - urbanfresh-network         
+      - urbanfresh-network     
 
 
-  redis-auth:
-    image: redis:alpine
-    container_name: redis-auth
+  store-service:
+    build: 
+      context: ../services/store-service
+      dockerfile: Dockerfile.dev
+    container_name:  store-service
+    restart: always
+    env_file:
+      - ../services/store-service/.env
     ports:
-      - "6379:6379"
-    restart: always  
+      - "4003:4003"
+    volumes:
+      - ../services/store-service:/app
+      - ./store-service/uploads:/app/uploads
+      - /app/node_modules  
+    depends_on:
+      - mongodb  
+    networks:
+      - urbanfresh-network     
+
+
+  product-service:
+    build:
+      context: ../services/product-service
+      dockerfile: Dockerfile.dev
+    container_name: product-service   
+    restart: always
+    volumes:
+      - ../services/product-service:/app
+      - /app/node_modules
+    env_file:
+      - ../services/product-service/.env  
+    ports:
+      - "4002:4002"
+    depends_on:
+      - mongodb
     networks:
       - urbanfresh-network
 
 
 volumes:
-  mongo_auth_data:
+  mongo_data:
 
 networks:
   urbanfresh-network:
     driver: bridge
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     

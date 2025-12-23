@@ -3,7 +3,7 @@ export const getUserCookieOptions = (isProd) => {
         accessOption: {
           httpOnly: true,
           secure: isProd,
-          sameSite: "strict",
+          sameSite: "lax",
           maxAge: 15 * 60 * 1000, 
           path: "/",              
         },
@@ -11,7 +11,7 @@ export const getUserCookieOptions = (isProd) => {
         refreshOption: {
           httpOnly: true,
           secure: isProd,
-          sameSite: "strict",
+          sameSite: "lax",
           maxAge: 7 * 24 * 60 * 60 * 1000, 
           path: "/api/auth/refresh", 
         }
@@ -23,12 +23,12 @@ export const clearUserCookies = (res) => {
     res.clearCookie("access_token", {
       httpOnly: true,
       secure: true,
-      sameSite: "strict",
+      sameSite: "lax",
     });
   
     res.clearCookie("refresh_token", {
       httpOnly: true,
       secure: true,
-      sameSite: "strict",
+      sameSite: "lax",
     });
 };

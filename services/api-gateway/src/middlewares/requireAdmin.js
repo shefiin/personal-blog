@@ -33,14 +33,14 @@ export function requireAdmin(options = {}) {
             if(locked)
                 return res.status(403).json({ message: "Admin account locked" });
 
-            if(allowlist.length > 0){
-                const ip = req.headers["x-forwaded-for"]?.split(",")[0] || req.ip
-                if(!allowlist.includes(ip)){
-                    return res.status(403).json({ message: "IP not allowed" });
-                }
-            }
+            // if(allowlist.length > 0){
+            //     const ip = req.headers["x-forwaded-for"]?.split(",")[0] || req.ip
+            //     if(!allowlist.includes(ip)){
+            //         return res.status(403).json({ message: "IP not allowed" });
+            //     }
+            // }
 
-            req.headers["x-user-id"] = payload.sub;
+            // req.headers["x-user-id"] = payload.sub;
             req.headers["x-user-role"] = payload.role;
             req.headers["x-user-email"] = payload.email;
 

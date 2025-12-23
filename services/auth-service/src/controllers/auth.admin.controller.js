@@ -31,7 +31,7 @@ export const adminLogin = async (req, res) => {
             });
         }
 
-        const isMatch = await bcrypt.compare(password, admin.password)
+        const isMatch = bcrypt.compare(password, admin.password)
 
         if(!isMatch){
             const attempts = await redis.incr(`admin:fail:${admin._id}`);
