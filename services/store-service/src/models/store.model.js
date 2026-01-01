@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { string } from "zod";
 
 
 const GeoSchema = new mongoose.Schema({
@@ -61,6 +62,12 @@ const StoreSchema = new mongoose.Schema({
   kycStatus: {
     type: String,
     enum: ["pending", "verified", "rejected"],
+    default: "pending"
+  },
+
+  status: {
+    type: String,
+    enum: ["pending", "active", "soon"],
     default: "pending"
   },
 

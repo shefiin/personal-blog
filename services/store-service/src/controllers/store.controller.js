@@ -106,30 +106,34 @@ export const createStoreApplication = async (req, res) => {
 
 export const verifyStore = async (req, res) => {
     try {
+
+        const role = req.headers["x-user-role"];
+        if(role !== "admin"){
+            return res.status(403).json({ message: "Access denied" });
+        }
+
         const {id} = req.params;
 
         const store = await Store.findById(id);
 
         if(!store) return res.status(404).json({
-            message: "store don't exist"
+            message: "store not found"
         });
 
-        if (store.status !== "pending") {
-            return res.status(400).json({
-              message: `Store cannot be approved from '${store.status}' state`
-            });
-        };
+        if (store.kycStatus === "verified") {
+            return res.status(400).json({ message: "Store already verified" });
+        }
 
-        store.status = "approved";
+        store.kycStatus = "verified";
+        store.status = "active";
+
         await store.save();
 
-        return res.status(200).json({
-            message: "Store approved successfully",
-            store: {
-              id: store._id,
-              status: store.status
-            }
-        });
+        res.json({
+            message: "Store verified successfully",
+            storeId: store._id,
+            status: store.status
+        })
       
     } catch (error) {
         console.error("Verify store error:", error);

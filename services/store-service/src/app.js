@@ -1,5 +1,4 @@
 import express from 'express';
-import cors from 'cors';
 import dotenv from 'dotenv';
 import cookieParser from "cookie-parser";
 import connectDB from './config/db.js';
@@ -17,7 +16,8 @@ connectDB();
 
 app.use(attachUserFromHeaders);
 
-app.use("/", storeRoutes);
+app.use("/api/store", storeRoutes);
+app.use("/api/admin/store", storeRoutes)
 
 
 const PORT = process.env.PORT || 4003;

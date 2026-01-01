@@ -1,7 +1,17 @@
-import AppRouter from "./router/index.jsx"
+import { BrowserRouter } from "react-router-dom";
+import  AppRouter  from "./router/index.jsx";
+import Navbar from "./Components/Navbar/Navbar.jsx";
+
+
+
 
 function App(){
-  return <AppRouter />;
+  return (
+    <BrowserRouter>
+      <Navbar/>
+      <AppRouter/>
+    </BrowserRouter>
+  )
 }
 
 export default App

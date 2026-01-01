@@ -77,30 +77,39 @@ export const refreshToken = async (req, res) => {
     try{
         const token = req.cookies?.uf_admin_rt;
 
-        if(!token)
-            return res.status(401).json({ message: "You are not allowed to send this request since token is missing" });
+        if(!token){
+            return res.status(401).json({ 
+                message: "You are not allowed to send this request since token is missing" 
+            });
+        }    
 
         let payload;
 
         try{
             payload = jwt.verify(token, process.env.REFRESH_SECRET)
         } catch(err){
-            return res.status(401).json({ message: "Invalid refresh token" });
+            return res.status(401).json({ 
+                message: "Invalid refresh token" 
+            });
         }
-
-        const key = `admin:rt:${payload.id}`;
+        
+        const key = `admin:rt:${payload.sub}`;
         const storedToken = await redis.get(key);
 
-        const adminId = payload.id;
+        const adminId = payload.sub;
 
         const admin = await User.findById(adminId).select("_id email role name");
 
         if(!storedToken){
-            return res.status(401).json({ message: "session expired "});
+            return res.status(401).json({ 
+                message: "session expired"
+            });
         }
 
         if(storedToken !== token){
-            return res.status(403).json({ message: "Invalid refresh token"});
+            return res.status(403).json({ 
+                message: "Invalid refresh token" 
+            });
         }
 
         const newRefreshToken = generateRefreshToken(admin);
