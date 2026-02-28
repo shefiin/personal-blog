@@ -1,1 +1,1 @@
-Quick Commerce project using microservices🚀
+personal-blog using microservices🚀
