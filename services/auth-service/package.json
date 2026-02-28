@@ -1,11 +1,13 @@
 {
   "name": "auth-service",
   "version": "1.0.0",
-  "main": "src/app.js",
+  "main": "dist/app.js",
   "type": "module",
   "scripts": {
-    "start": "node src/app.js",
-    "dev": "nodemon src/app.js"
+    "dev": "tsx watch src/app.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/app.js",
+    "create-admin": "tsx scripts/createAdmin.ts"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -21,6 +23,12 @@
     "redis": "^5.10.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.5",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24.10.1",
+    "@types/nodemailer": "^7.0.4",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
   }
 }

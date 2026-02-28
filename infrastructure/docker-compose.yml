@@ -59,46 +59,6 @@ services:
     networks:
       - urbanfresh-network     
 
-
-  store-service:
-    build: 
-      context: ../services/store-service
-      dockerfile: Dockerfile.dev
-    container_name:  store-service
-    restart: always
-    env_file:
-      - ../services/store-service/.env
-    ports:
-      - "4003:4003"
-    volumes:
-      - ../services/store-service:/app
-      - ./store-service/uploads:/app/uploads
-      - /app/node_modules  
-    depends_on:
-      - mongodb  
-    networks:
-      - urbanfresh-network     
-
-
-  product-service:
-    build:
-      context: ../services/product-service
-      dockerfile: Dockerfile.dev
-    container_name: product-service   
-    restart: always
-    volumes:
-      - ../services/product-service:/app
-      - /app/node_modules
-    env_file:
-      - ../services/product-service/.env  
-    ports:
-      - "4002:4002"
-    depends_on:
-      - mongodb
-    networks:
-      - urbanfresh-network
-
-
 volumes:
   mongo_data:
 
