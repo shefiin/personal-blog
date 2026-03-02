@@ -1,5 +1,3 @@
-import { Link } from "react-router-dom";
-
 const Home = () => {
   return (
     <main className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-emerald-50 via-cyan-50 to-white px-4 py-16">
@@ -11,23 +9,8 @@ const Home = () => {
           Blog Platform, Built With Microservices
         </h1>
         <p className="max-w-2xl text-slate-600">
-          Start by creating your account, verify OTP from your email, and log in to continue.
+          A personal publishing space focused on clean writing and thoughtful updates.
         </p>
-
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Link
-            to="/register"
-            className="rounded-lg bg-emerald-600 px-5 py-2.5 font-medium text-white transition hover:bg-emerald-500"
-          >
-            Create account
-          </Link>
-          <Link
-            to="/login"
-            className="rounded-lg border border-slate-300 px-5 py-2.5 font-medium text-slate-800 transition hover:bg-slate-50"
-          >
-            Login
-          </Link>
-        </div>
       </section>
     </main>
   );

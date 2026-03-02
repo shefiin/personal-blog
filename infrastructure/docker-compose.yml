@@ -1,16 +1,4 @@
 services:
-  mongodb:
-    image: mongo:6
-    container_name: mongodb
-    restart: always
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
-    networks:
-      - urbanfresh-network
-  
-
   redis:
     image: redis:alpine
     container_name: redis
@@ -35,8 +23,23 @@ services:
     env_file: 
       - ../services/auth-service/.env
     depends_on:
-      - mongodb
       - redis
+    networks:
+      - urbanfresh-network
+
+  blog-service:
+    build:
+      context: ../services/blog-service
+      dockerfile: Dockerfile.dev
+    container_name: blog-service
+    restart: always
+    ports:
+      - "3004:3004"
+    volumes:
+      - ../services/blog-service:/app
+      - /app/node_modules
+    env_file:
+      - ../services/blog-service/.env
     networks:
       - urbanfresh-network
 
@@ -56,11 +59,9 @@ services:
       - /app/node_modules  
     depends_on: 
       - auth-service
+      - blog-service
     networks:
       - urbanfresh-network     
-
-volumes:
-  mongo_data:
 
 networks:
   urbanfresh-network:

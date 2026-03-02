@@ -8,6 +8,7 @@ import { storeProxy } from "./proxies/store.proxy.js";
 import { requireAdmin } from "./middlewares/requireAdmin.js";
 import { requireUser } from "./middlewares/requireUser.js";
 import { productProxy } from "./proxies/product.proxy.js";
+import { blogProxy } from "./proxies/blog.proxy.js";
 
 dotenv.config();
 const app = express();
@@ -33,6 +34,14 @@ app.use("/api/auth", authProxy);
 
 //admin auth 
 app.use("/api/admin/auth", authProxy);
+
+
+//Blog(public)
+app.use("/api/blog", blogProxy);
+
+
+//Blog(admin)
+app.use("/api/admin/blog", requireAdmin(), blogProxy);
 
 
 
