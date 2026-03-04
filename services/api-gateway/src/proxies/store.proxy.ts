@@ -4,10 +4,9 @@ export const storeProxy = createProxyMiddleware({
     target: process.env.STORE_SERVICE_URL,
     changeOrigin: true,
 
-    parseReqBody: false,
-
-    onError(err, req, res) {
+    onError(err, req, res: any) {
         console.error("store proxy Error:", err);
-        return res.status(500).json({ message: "Gateway Error(store)" });
+        res.writeHead(502, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ message: "Gateway Error(store)" }));
     }
 });

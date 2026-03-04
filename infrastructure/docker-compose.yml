@@ -1,4 +1,15 @@
 services:
+  mongodb:
+    image: mongo:7
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    restart: always
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - code-context-network
+
   redis:
     image: redis:alpine
     container_name: redis
@@ -6,7 +17,7 @@ services:
       - "6379:6379"
     restart: always  
     networks:
-      - urbanfresh-network
+      - code-context-network
     
 
   auth-service:
@@ -23,9 +34,10 @@ services:
     env_file: 
       - ../services/auth-service/.env
     depends_on:
+      - mongodb
       - redis
     networks:
-      - urbanfresh-network
+      - code-context-network
 
   blog-service:
     build:
@@ -41,7 +53,7 @@ services:
     env_file:
       - ../services/blog-service/.env
     networks:
-      - urbanfresh-network
+      - code-context-network
 
 
   api-gateway:
@@ -61,11 +73,14 @@ services:
       - auth-service
       - blog-service
     networks:
-      - urbanfresh-network     
+      - code-context-network     
 
 networks:
-  urbanfresh-network:
+  code-context-network:
     driver: bridge
+
+volumes:
+  mongodb-data:
     
 
 

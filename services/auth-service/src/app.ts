@@ -3,7 +3,6 @@ import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 
 import { connectDB } from "./config/db.js";
-import userAuthRoutes from "./routes/auth.user.routes.js";
 import adminAuthRoutes from "./routes/auth.admin.routes.js"
 
 
@@ -15,7 +14,6 @@ app.use(express.json());
 
 connectDB();
 
-app.use("/api/auth", userAuthRoutes);
 app.use("/api/admin/auth", adminAuthRoutes)
 
 

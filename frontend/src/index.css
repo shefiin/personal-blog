@@ -1,1 +1,147 @@
+@import url("https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
+
+:root {
+  font-family: "Source Serif 4", serif;
+}
+
+body {
+  font-family: "Source Serif 4", serif;
+}
+
+@keyframes addMenuDropIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.read-article blockquote {
+  margin: 1.6rem 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #f9f9f9;
+  padding: 0.9rem 1rem;
+  font-style: italic;
+  color: #334155;
+}
+
+.read-article pre {
+  margin: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #f9f9f9;
+  padding: 0.9rem 1rem;
+  overflow-x: auto;
+}
+
+.read-article pre code {
+  background: transparent;
+  color: #0f172a;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.read-article p,
+.read-article figure,
+.read-article .cc-code-wrap {
+  margin: 1.6rem 0;
+}
+
+.read-article figcaption {
+  margin-top: 0.45rem;
+  font-size: 0.78rem;
+  line-height: 1.3;
+  opacity: 0.85;
+}
+
+.read-article .cc-code-wrap {
+  position: relative;
+}
+
+.read-article .cc-code-wrap.is-collapsed pre {
+  max-height: 14rem;
+  overflow: auto;
+}
+
+.read-article .cc-code-wrap .cc-code-toggle {
+  position: absolute;
+  right: 0.5rem;
+  top: 0.5rem;
+  z-index: 2;
+  display: inline-flex;
+  height: 1.8rem;
+  width: 1.8rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #334155;
+}
+
+.read-article.theme-light blockquote,
+.read-article.theme-light .cc-code-wrap pre {
+  background: #f3f3f3;
+  border-color: #e1e1e1;
+  color: #111111;
+}
+
+.read-article.theme-light pre code {
+  color: #111111;
+}
+
+.read-article.theme-dark blockquote,
+.read-article.theme-dark .cc-code-wrap pre {
+  background: #1a1a1a;
+  border-color: #2a2a2a;
+  color: #b0b0b0;
+}
+
+.read-article.theme-dark pre code {
+  color: #b0b0b0;
+}
+
+.read-article.theme-dark .cc-code-wrap .cc-code-toggle {
+  background: #202020;
+  border-color: #333333;
+  color: #b0b0b0;
+}
+
+.read-article.theme-sepia blockquote,
+.read-article.theme-sepia .cc-code-wrap pre {
+  background: #f1e8d7;
+  border-color: #ddd0b7;
+  color: #111111;
+}
+
+.read-article.theme-sepia pre code {
+  color: #111111;
+}
+
+.read-article.theme-sepia .cc-code-wrap .cc-code-toggle {
+  background: #e6dbc4;
+  border-color: #cdbb9b;
+  color: #111111;
+}
+
+.read-article.theme-gray blockquote,
+.read-article.theme-gray .cc-code-wrap pre {
+  background: #6a6a6d;
+  border-color: #7a7a7d;
+  color: #c9caca;
+}
+
+.read-article.theme-gray pre code {
+  color: #c9caca;
+}
+
+.read-article.theme-gray .cc-code-wrap .cc-code-toggle {
+  background: #7a7a7d;
+  border-color: #9a9a9d;
+  color: #c9caca;
+}

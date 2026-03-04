@@ -32,6 +32,7 @@ logs/
 # Service-specific env files
 services/**/.env
 services/**/.env.*
+!services/**/.env.example
 
 # Infrastructure envs
 infrastructure/**/.env

@@ -1,4 +1,5 @@
 import Post from "../models/post.model.js";
+import { uploadImageBuffer } from "../config/cloudinary.js";
 
 const buildSlug = (title: string) =>
   title
@@ -204,5 +205,27 @@ export const deletePost = async (req, res) => {
   } catch (err) {
     console.error("Delete post error:", err);
     return res.status(500).json({ message: "Failed to delete post" });
+  }
+};
+
+export const uploadPostImage = async (req, res) => {
+  try {
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      return res.status(500).json({ message: "Cloudinary is not configured" });
+    }
+
+    const file = (req as any).file as { buffer: Buffer } | undefined;
+    if (!file) {
+      return res.status(400).json({ message: "Image file is required" });
+    }
+
+    const result = await uploadImageBuffer(file.buffer, process.env.CLOUDINARY_FOLDER || "code-context");
+    return res.status(201).json({
+      url: result.secure_url,
+      publicId: result.public_id
+    });
+  } catch (err) {
+    console.error("Upload image error:", err);
+    return res.status(500).json({ message: "Failed to upload image" });
   }
 };

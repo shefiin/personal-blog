@@ -1,117 +1,113 @@
 import User from "../models/user.model.js";
 import bcrypt from "bcrypt";
-import redis from "../config/redis.js";
-import { generateAccessToken, generateRefreshToken } from "../utils/generateTokens.js";
-import { getAdminCookieOptions, clearAdminCookies } from "../utils/adminCookies.js";
 import jwt from "jsonwebtoken";
+import redis from "../config/redis.js";
+import { createAccessToken, createRefreshToken } from "../utils/generateTokens.js";
+import { setAuthCookies, clearAuthCookies } from "../utils/adminCookies.js";
 
-const isProd = process.env.NODE_ENV === "production";
-const { accessOption, refreshOption } = getAdminCookieOptions(isProd);
+const LOGIN_LIMIT = 5;
+const LOCK_TIME = 10 * 60;
+const REFRESH_TTL = 7 * 24 * 60 * 60;
+const REFRESH_GRACE_TTL = 120;
 
-const ADMIN_LOGIN_LIMIT = 5;
-const ADMIN_LOCK_TIME = 10 * 60;
+const refreshKey = (id: string) => `admin:refresh:${id}`;
+const refreshPrevKey = (id: string) => `admin:refresh:prev:${id}`;
+const failKey  = (id: string) => `admin:fail:${id}`;
+const lockKey  = (id: string) => `admin:locked:${id}`;
 
 export const adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
 
     const admin = await User.findOne({ email });
-
     if (!admin || admin.role !== "admin") {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const locked = await redis.get(`admin:locked:${admin._id}`);
-
+    const locked = await redis.get(lockKey(admin._id.toString()));
     if (locked) {
-      return res.status(403).json({
-        message: "Account is locked due to failed attempts. try again later."
-      });
+      return res.status(403).json({ message: "Account temporarily locked" });
     }
 
-    const isMatch = await bcrypt.compare(password, admin.password);
-
-    if (!isMatch) {
-      const attempts = await redis.incr(`admin:fail:${admin._id}`);
-
+    const validPassword = await bcrypt.compare(password, admin.password);
+    if (!validPassword) {
+      const attempts = Number(await redis.incr(failKey(admin._id.toString())));
       if (attempts === 1) {
-        await redis.expire(`admin:fail:${admin._id}`, ADMIN_LOCK_TIME);
+        await redis.expire(failKey(admin._id.toString()), LOCK_TIME);
       }
-
-      if (attempts >= ADMIN_LOGIN_LIMIT) {
-        await redis.set(`admin:locked:${admin._id}`, "1", { EX: ADMIN_LOCK_TIME });
+      if (attempts >= LOGIN_LIMIT) {
+        await redis.set(lockKey(admin._id.toString()), "1", { EX: LOCK_TIME });
       }
-
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    await redis.del(`admin:fail:${admin._id}`);
+    await redis.del(failKey(admin._id.toString()));
 
-    const accessToken = generateAccessToken(admin);
-    const refreshToken = generateRefreshToken(admin);
+    const accessToken  = createAccessToken(admin);
+    const refreshToken = createRefreshToken(admin);
 
-    await redis.set(`admin:rt:${admin._id}`, refreshToken, { EX: 7 * 24 * 60 * 60 });
+    const adminId = admin._id.toString();
+    const key = refreshKey(adminId);
+    await redis.sAdd(key, refreshToken);
+    await redis.expire(key, REFRESH_TTL);
+    await redis.del(refreshPrevKey(adminId));
 
-    res.cookie("uf_admin_at", accessToken, accessOption);
-    res.cookie("uf_admin_rt", refreshToken, refreshOption);
-
-    res.json({ message: "Admin logged in successfully " });
+    setAuthCookies(res, accessToken, refreshToken);
+    return res.json({ message: "Admin logged in" });
   } catch (err) {
-    console.error("Admin login error:", err);
-    res.status(500).json({ message: "Sever error" });
+    console.error("Login error:", err);
+    return res.status(500).json({ message: "Server error" });
   }
 };
 
 export const refreshToken = async (req, res) => {
   try {
     const token = req.cookies?.uf_admin_rt;
-
     if (!token) {
-      return res.status(401).json({
-        message: "You are not allowed to send this request since token is missing"
-      });
+      return res.status(401).json({ message: "Refresh token is missing" });
     }
 
-    let payload;
-
+    let payload: jwt.JwtPayload;
     try {
       payload = jwt.verify(token, process.env.REFRESH_SECRET) as jwt.JwtPayload;
-    } catch (err) {
-      return res.status(401).json({
-        message: "Invalid refresh token"
-      });
+    } catch {
+      return res.status(401).json({ message: "Invalid refresh token" });
     }
 
-    const key = `admin:rt:${payload.sub}`;
-    const storedToken = await redis.get(key);
-    const adminId = payload.sub;
+    const adminId = payload.sub?.toString();
+    if (!adminId) {
+      return res.status(401).json({ message: "Invalid refresh token" });
+    }
+
+    const key = refreshKey(adminId);
+    const prevKey = refreshPrevKey(adminId);
+    const [exists, prevToken] = await Promise.all([
+      redis.sIsMember(key, token),
+      redis.get(prevKey)
+    ]);
+    if (!exists && prevToken !== token) {
+      return res.status(401).json({ message: "Invalid refresh token" });
+    }
+
     const admin = await User.findById(adminId).select("_id email role name");
-
-    if (!storedToken) {
-      return res.status(401).json({
-        message: "session expired"
-      });
+    if (!admin || admin.role !== "admin") {
+      return res.status(401).json({ message: "Invalid refresh token" });
     }
 
-    if (storedToken !== token) {
-      return res.status(403).json({
-        message: "Invalid refresh token"
-      });
-    }
+    const newAccessToken  = createAccessToken(admin);
+    const newRefreshToken = createRefreshToken(admin);
 
-    const newRefreshToken = generateRefreshToken(admin);
+    // Rotation with a short grace token window to prevent race-related refresh failures.
+    await redis.sRem(key, token);
+    await redis.sAdd(key, newRefreshToken);
+    await redis.expire(key, REFRESH_TTL);
+    await redis.set(prevKey, token, { EX: REFRESH_GRACE_TTL });
 
-    await redis.set(key, newRefreshToken, { EX: 7 * 24 * 60 * 60 });
-
-    const newAccessToken = generateAccessToken(admin);
-
-    res.cookie("uf_admin_at", newAccessToken, accessOption);
-    res.cookie("uf_admin_rt", newRefreshToken, refreshOption);
-
-    res.json({ message: "Admin token refreshed" });
-  } catch (error) {
-    console.error("Admin refresh error:", error);
-    res.status(500).json({ message: "Server error" });
+    setAuthCookies(res, newAccessToken, newRefreshToken);
+    return res.json({ message: "Token refreshed" });
+  } catch (err) {
+    console.error("Refresh error:", err);
+    return res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -119,59 +115,66 @@ export const adminLogout = async (req, res) => {
   try {
     const token = req.cookies?.uf_admin_rt;
 
-    if (!token) {
-      clearAdminCookies(res);
-      return res.status(200).json({ message: "Admin logged out successfully" });
+    if (token) {
+      let payload: jwt.JwtPayload | null = null;
+      try {
+        payload = jwt.verify(token, process.env.REFRESH_SECRET) as jwt.JwtPayload;
+      } catch {
+        payload = null;
+      }
+
+      const adminId = payload?.sub?.toString();
+      if (adminId) {
+        await Promise.all([
+          redis.sRem(refreshKey(adminId), token),
+          redis.del(refreshPrevKey(adminId))
+        ]);
+      }
     }
 
-    let payload;
-
-    try {
-      payload = jwt.verify(token, process.env.REFRESH_SECRET) as jwt.JwtPayload;
-    } catch (err) {
-      clearAdminCookies(res);
-      return res.status(200).json({ message: "Admin logged out successfully" });
-    }
-
-    const adminId = payload.sub;
-    await redis.del(`admin:rt:${adminId}`);
-
-    clearAdminCookies(res);
-
+    clearAuthCookies(res);
     return res.status(200).json({ message: "Admin logged out successfully" });
   } catch (err) {
     console.error("admin logout error:", err);
-    return res.status(500).json({ message: "something wrong while logout admin" });
+    return res.status(500).json({ message: "Something wrong while logout admin" });
   }
 };
 
+// ✅ FIX: sessionCheck reads the refresh token cookie directly —
+//    it must NOT be placed behind the access-token auth middleware.
 export const sessionCheck = async (req, res) => {
   try {
     const token = req.cookies?.uf_admin_rt;
-
     if (!token) {
       return res.json({ loggedIn: false });
     }
 
-    let payload;
-
+    let payload: jwt.JwtPayload;
     try {
       payload = jwt.verify(token, process.env.REFRESH_SECRET) as jwt.JwtPayload;
-    } catch (err) {
+    } catch {
       return res.json({ loggedIn: false });
     }
 
-    const storedRT = await redis.get(`admin:rt:${payload.sub}`);
-    if (!storedRT) {
+    const adminId = payload.sub?.toString();
+    if (!adminId) {
+      return res.json({ loggedIn: false });
+    }
+
+    const [exists, prevToken] = await Promise.all([
+      redis.sIsMember(refreshKey(adminId), token),
+      redis.get(refreshPrevKey(adminId))
+    ]);
+    if (!exists && prevToken !== token) {
       return res.json({ loggedIn: false });
     }
 
     return res.json({
       loggedIn: true,
       admin: {
-        id: payload.sub,
+        id:    payload.sub,
         email: payload.email,
-        role: payload.role
+        role:  payload.role
       }
     });
   } catch (err) {

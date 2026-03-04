@@ -27,11 +27,6 @@ app.use((req, res, next) => {
 
 
 
-//user auth
-app.use("/api/auth", authProxy);
-
-
-
 //admin auth 
 app.use("/api/admin/auth", authProxy);
 
@@ -67,5 +62,4 @@ const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
   console.log(`API Gateway running on port ${PORT}`);
 });
-
 

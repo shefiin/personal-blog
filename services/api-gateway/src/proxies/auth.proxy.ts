@@ -4,10 +4,9 @@ export const authProxy = createProxyMiddleware({
     target: process.env.AUTH_SERVICE_URL,
     changeOrigin: true,
 
-    parseReqBody: false,
-
-    onError(err, req, res) {
+    onError(err, req, res: any) {
         console.error("auth proxy Error:", err);
-        res.status(500).json({ message: "Gateway Error(auth)" });
+        res.writeHead(502, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ message: "Gateway Error(auth)" }));
     }
 });

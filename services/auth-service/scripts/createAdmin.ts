@@ -1,44 +1,13 @@
-import mongoose from "mongoose";
-import bcrypt from "bcrypt";
-import User from "../src/models/user.model.js";
-import dotenv from "dotenv";
+const bcrypt = require('bcrypt');
 
-dotenv.config();
+const passwordToHash = '476622@Blog';
+const saltRounds = 10; // The cost factor; higher is more secure but slower
 
-const createAdmin = async () => {
-  try {
-    const mongoUrl = process.env.MONGO_URL;
-    if (!mongoUrl) {
-      throw new Error("MONGO_URL is missing. Set it in services/auth-service/.env");
-    }
-    if (mongoUrl.includes("<db_username>") || mongoUrl.includes("<db_password>") || mongoUrl.includes("<cluster-host>")) {
-      throw new Error("MONGO_URL still contains placeholders. Replace with your real Atlas URI.");
-    }
-    await mongoose.connect(mongoUrl);
-
-    const existingAdmin = await User.findOne({ role: "admin" });
-
-    if (existingAdmin) {
-      console.log("Admin already exists");
-      process.exit(0);
-    }
-
-    const hashedPassword = await bcrypt.hash("Admin@123", 10);
-
-    const admin = await User.create({
-      name: "Super Admin",
-      email: "admin@urbanfresh.com",
-      password: hashedPassword,
-      role: "admin",
-      isVerified: true
-    });
-
-    console.log("Admin created:", admin.email);
-    process.exit(0);
-  } catch (err) {
-    console.error("Error creating admin:", err);
-    process.exit(1);
+bcrypt.hash(passwordToHash, saltRounds, function(err, hash) {
+  if (err) {
+    console.error(err);
+    return;
   }
-};
-
-createAdmin();
+  console.log('Original Password:', passwordToHash);
+  console.log('Hashed Password:', hash); // This is what you store in your database
+});

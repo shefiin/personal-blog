@@ -1,24 +1,30 @@
 import jwt from "jsonwebtoken";
 
-export const generateAccessToken = (user) => {
-  return jwt.sign({
-      sub: user._id.toString(),  
+const ensureStringId = (value: unknown): string => {
+  if (value === null || value === undefined) return "";
+  return String(value);
+};
+
+export const createAccessToken = (user) => {
+  return jwt.sign(
+    {
+      sub:   ensureStringId(user._id),
       email: user.email,
-      role: user.role
+      role:  user.role,
     },
     process.env.JWT_KEY,
     { expiresIn: "15m" }
   );
 };
 
-
-export const generateRefreshToken = (user) => {
-    return jwt.sign({
-        sub: user._id.toString(),   
-        email: user.email,
-        role: user.role
-      },
-      process.env.REFRESH_SECRET,
-      { expiresIn: "7d" }
-    );
+export const createRefreshToken = (user) => {
+  return jwt.sign(
+    {
+      sub:   ensureStringId(user._id),
+      email: user.email,
+      role:  user.role,
+    },
+    process.env.REFRESH_SECRET,
+    { expiresIn: "7d" }
+  );
 };

@@ -1,60 +1,41 @@
 import { http } from "./http";
 
-export type RegisterPayload = {
-  name: string;
-  email: string;
-  password: string;
-};
-
 export type LoginPayload = {
-  email: string;
+  email:    string;
   password: string;
-};
-
-export type RegisterResponse = {
-  message: string;
-  verifyToken: string;
 };
 
 export type AuthSuccessResponse = {
   message: string;
   user?: {
-    id: string;
-    name: string;
+    id:    string;
+    name:  string;
     email: string;
-    role: string;
+    role:  string;
   };
 };
 
-export const registerUser = (data: RegisterPayload) => {
-  return http.post<RegisterResponse>("/api/auth/register", data);
-};
-
-export const verifyRegisterOtp = (otp: string, verifyToken: string) => {
-  return http.post<AuthSuccessResponse>(
-    "/api/auth/verify-otp",
-    { otp },
-    {
-      headers: {
-        Authorization: `Bearer ${verifyToken}`
-      }
-    }
-  );
-};
-
-export const resendRegisterOtp = (verifyToken: string) => {
-  return http.post<{ message: string }>(
-    "/api/auth/resend-otp",
-    {},
-    {
-      headers: {
-        Authorization: `Bearer ${verifyToken}`
-      }
-    }
-  );
+export type AdminSessionResponse = {
+  loggedIn: boolean;
+  admin?: {
+    id:    string;
+    email: string;
+    role:  string;
+  };
 };
 
 export const loginUser = (data: LoginPayload) => {
-  return http.post<AuthSuccessResponse>("/api/auth/login", data);
+  return http.post<AuthSuccessResponse>("/api/admin/auth/login", data);
 };
-    
+
+// ✅ FIX: Changed from POST to GET.
+//    sessionCheck reads only cookies — it has no request body,
+//    so POST was semantically wrong and caused the interceptor
+//    to retry it through the token-refresh flow, creating a loop.
+export const getAdminSession = () => {
+  return http.get<AdminSessionResponse>("/api/admin/auth/session");
+};
+
+export const logoutAdmin = () => {
+  return http.post<{ message: string }>("/api/admin/auth/logout");
+};

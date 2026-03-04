@@ -17,7 +17,7 @@ const LoginModal = ({ onClose }: LoginModalProps) => {
     setLoading(true);
 
     try {
-      await http.post("/api/auth/login", {
+      await http.post("/api/admin/auth/login", {
         email,
         password
       });
