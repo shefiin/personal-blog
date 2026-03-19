@@ -1,15 +1,25 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BrowserRouter, Link } from "react-router-dom";
+import { BrowserRouter } from "react-router-dom";
 import AppRouter from "./router";
 import Navbar from "./Components/Navbar/Navbar";
-import { getAdminSession, logoutAdmin } from "./api/auth.api";
+import { getSession, logoutAuth } from "./api/auth.api";
 
 type ThemeMode = "light" | "sepia" | "gray" | "dark";
 type PublishHandler = () => Promise<void>;
 type DraftSaveState = "idle" | "saving" | "saved";
+type UserProfile = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  isEmailVerified?: boolean;
+  createdAt?: string;
+};
 
 function App(){
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [canPublish, setCanPublish] = useState(false);
@@ -26,10 +36,14 @@ function App(){
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const response = await getAdminSession();
-        setIsAdminLoggedIn(response.data.loggedIn);
+        const response = await getSession();
+        setIsAdminLoggedIn(Boolean(response.data.admin));
+        setUserProfile(response.data.user || null);
+        setIsUserLoggedIn(Boolean(response.data.user));
       } catch {
         setIsAdminLoggedIn(false);
+        setIsUserLoggedIn(false);
+        setUserProfile(null);
       } finally {
         setAuthChecked(true);
       }
@@ -48,12 +62,20 @@ function App(){
     setIsAdminLoggedIn(true);
   };
 
+  const handleUserLoginSuccess = async () => {
+    const response = await getSession();
+    setUserProfile(response.data.user || null);
+    setIsUserLoggedIn(Boolean(response.data.user));
+  };
+
   const handleLogout = async () => {
     setLogoutLoading(true);
     try {
-      await logoutAdmin();
+      await logoutAuth();
     } finally {
       setIsAdminLoggedIn(false);
+      setIsUserLoggedIn(false);
+      setUserProfile(null);
       setLogoutLoading(false);
     }
   };
@@ -81,6 +103,10 @@ function App(){
       <div className="flex min-h-screen flex-col">
         <Navbar
           isAdminLoggedIn={isAdminLoggedIn}
+          isUserLoggedIn={isUserLoggedIn}
+          userName={userProfile?.name || ""}
+          userEmail={userProfile?.email || ""}
+          userJoinedAt={userProfile?.createdAt || ""}
           onLogout={handleLogout}
           logoutLoading={logoutLoading}
           themeMode={themeMode}
@@ -93,38 +119,25 @@ function App(){
         <div className="flex-1 pt-16">
           <AppRouter
             isAdminLoggedIn={isAdminLoggedIn}
+            isUserLoggedIn={isUserLoggedIn}
+            userId={userProfile?.id || ""}
+            userName={userProfile?.name || ""}
             authChecked={authChecked}
             onLoginSuccess={handleLoginSuccess}
+            onUserLoginSuccess={handleUserLoginSuccess}
             themeMode={themeMode}
             onRegisterPublish={handleRegisterPublish}
             onPublishAvailabilityChange={handlePublishAvailabilityChange}
             onDraftSaveStateChange={setDraftSaveState}
           />
         </div>
-        <footer className="border-t border-slate-200 bg-white px-4 py-4 text-center text-xs text-slate-600">
-          <span>Code & Context all rights reserved</span>
-          {authChecked && !isAdminLoggedIn ? (
-            <>
-              <span> - </span>
-              <Link to="/login" className="font-medium text-slate-800 hover:text-slate-600">
-                Admin
-              </Link>
-            </>
-          ) : null}
-        </footer>
+
       </div>
     </BrowserRouter>
   )
 }
 
 export default App
-
-
-
-
-
-
-
 
 
 

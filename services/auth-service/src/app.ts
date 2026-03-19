@@ -3,7 +3,8 @@ import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 
 import { connectDB } from "./config/db.js";
-import adminAuthRoutes from "./routes/auth.admin.routes.js"
+import authRoutes from "./routes/auth.routes.js";
+import { errorHandler } from "./middlewares/errorHandler.js";
 
 
 dotenv.config();
@@ -14,7 +15,8 @@ app.use(express.json());
 
 connectDB();
 
-app.use("/api/admin/auth", adminAuthRoutes)
+app.use("/api/auth", authRoutes)
+app.use(errorHandler);
 
 
 const PORT = process.env.PORT || 3001;

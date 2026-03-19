@@ -10,6 +10,7 @@ export const createAccessToken = (user) => {
     {
       sub:   ensureStringId(user._id),
       email: user.email,
+      name:  user.name,
       role:  user.role,
     },
     process.env.JWT_KEY,
@@ -22,6 +23,7 @@ export const createRefreshToken = (user) => {
     {
       sub:   ensureStringId(user._id),
       email: user.email,
+      name:  user.name,
       role:  user.role,
     },
     process.env.REFRESH_SECRET,

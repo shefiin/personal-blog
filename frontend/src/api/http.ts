@@ -48,10 +48,13 @@ http.interceptors.response.use(
 
     // ✅ FIX: Exclude all auth endpoints to prevent infinite loops
     const isAuthEndpoint = [
-      "/api/admin/auth/login",
-      "/api/admin/auth/refresh",
-      "/api/admin/auth/session",
-      "/api/admin/auth/logout",
+      "/api/auth/login",
+      "/api/auth/refresh",
+      "/api/auth/session",
+      "/api/auth/logout",
+      "/api/auth/register",
+      "/api/auth/verify-otp",
+      "/api/auth/resend-otp",
     ].some((path) => requestUrl.includes(path));
 
     if (status !== 401 || isAuthEndpoint || originalRequest._retry) {
@@ -75,7 +78,7 @@ http.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      await refreshClient.post("/api/admin/auth/refresh");
+      await refreshClient.post("/api/auth/refresh");
       flushQueue();                    // signal all queued requests to retry
       return http(originalRequest);   // retry the original request
     } catch (refreshError) {

@@ -1,18 +1,24 @@
 import { Navigate, Routes, Route } from "react-router-dom";
 import LoginPage from "../pages/login";
+import RegisterPage from "../pages/register";
 import Home from "../pages/Home";
 import WritePage from "../pages/write";
 import PostPage from "../pages/post";
 import ReadPage from "../pages/read";
 import AdminBlogsPage from "../pages/adminBlogs";
+import SavedArticlesPage from "../pages/saved";
 
 type ThemeMode = "light" | "dark" | "sepia" | "gray";
 type DraftSaveState = "idle" | "saving" | "saved";
 
 type AppRouterProps = {
   isAdminLoggedIn: boolean;
+  isUserLoggedIn: boolean;
+  userId: string;
+  userName: string;
   authChecked: boolean;
   onLoginSuccess: () => void;
+  onUserLoginSuccess: () => void;
   themeMode: ThemeMode;
   onRegisterPublish: ((handler: (() => Promise<void>) | null) => void);
   onPublishAvailabilityChange: (enabled: boolean) => void;
@@ -21,8 +27,12 @@ type AppRouterProps = {
 
 function AppRouter({
   isAdminLoggedIn,
+  isUserLoggedIn,
+  userId,
+  userName,
   authChecked,
   onLoginSuccess,
+  onUserLoginSuccess,
   themeMode,
   onRegisterPublish,
   onPublishAvailabilityChange,
@@ -32,7 +42,8 @@ function AppRouter({
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/read" element={<ReadPage />} />
-      <Route path="/blog/:slug" element={<PostPage themeMode={themeMode} />} />
+      <Route path="/saved" element={isUserLoggedIn ? <SavedArticlesPage /> : <Navigate to="/login" replace />} />
+      <Route path="/blog/:slug" element={<PostPage themeMode={themeMode} isUserLoggedIn={isUserLoggedIn} userId={userId} userName={userName} />} />
       <Route
         path="/admin/blogs"
         element={
@@ -67,12 +78,16 @@ function AppRouter({
         element={
           !authChecked ? (
             <main className="min-h-[calc(100vh-4rem)] bg-gradient-to-b from-amber-50 to-white px-4 py-12" />
-          ) : isAdminLoggedIn ? (
+          ) : isAdminLoggedIn || isUserLoggedIn ? (
             <Navigate to="/" replace />
           ) : (
-            <LoginPage onLoginSuccess={onLoginSuccess} />
+            <LoginPage onLoginSuccess={onLoginSuccess} onUserLoginSuccess={onUserLoginSuccess} />
           )
         }
+      />
+      <Route
+        path="/register"
+        element={isAdminLoggedIn || isUserLoggedIn ? <Navigate to="/" replace /> : <RegisterPage onRegisterSuccess={onUserLoginSuccess} />}
       />
     </Routes>
   );

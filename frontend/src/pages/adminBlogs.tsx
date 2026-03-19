@@ -5,6 +5,7 @@ import {
   listAdminPosts,
   type PostResponse
 } from "../api/blog.api";
+import Spinner from "../Components/common/Spinner";
 
 const AdminBlogsPage = () => {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ const AdminBlogsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [postToDelete, setPostToDelete] = useState<PostResponse | null>(null);
 
   const publishedCount = useMemo(() => posts.filter((post) => post.status === "published").length, [posts]);
   const draftCount = useMemo(() => posts.filter((post) => post.status === "draft").length, [posts]);
@@ -33,15 +35,15 @@ const AdminBlogsPage = () => {
     fetchPosts();
   }, []);
 
-  const handleDelete = async (post: PostResponse) => {
-    const confirmed = window.confirm(`Delete "${post.title}"? This action cannot be undone.`);
-    if (!confirmed) return;
+  const handleDelete = async () => {
+    if (!postToDelete) return;
 
-    setDeletingId(post._id);
+    setDeletingId(postToDelete._id);
     setError("");
     try {
-      await deleteAdminPost(post._id);
-      setPosts((prev) => prev.filter((item) => item._id !== post._id));
+      await deleteAdminPost(postToDelete._id);
+      setPosts((prev) => prev.filter((item) => item._id !== postToDelete._id));
+      setPostToDelete(null);
     } catch (err: any) {
       setError(err?.response?.data?.message || "Failed to delete post.");
     } finally {
@@ -50,12 +52,43 @@ const AdminBlogsPage = () => {
   };
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-[#FBFBFB] px-4 py-10">
+    <main className="font-jakarta min-h-[calc(100vh-4rem)] bg-[#FBFBFB] px-4 py-10">
+      {postToDelete ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_24px_70px_rgba(15,23,42,0.2)]">
+            <h2 className="text-xl font-semibold text-black">Delete article?</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              <span className="font-medium text-slate-900">&ldquo;{postToDelete.title}&rdquo;</span> will be removed permanently.
+              This action cannot be undone.
+            </p>
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setPostToDelete(null)}
+                disabled={Boolean(deletingId)}
+                className="inline-flex items-center rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={Boolean(deletingId)}
+                className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {deletingId ? <Spinner className="h-4 w-4" /> : null}
+                <span>Delete</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <section className="mx-auto max-w-5xl">
         <header className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-black">Admin Panel</h1>
-            <p className="mt-1 text-sm text-slate-600">Manage all blogs, edit content, and remove posts.</p>
+            <h1 className="font-jakarta text-3xl font-semibold tracking-tight text-black">Admin Panel</h1>
+            <p className="font-jakarta mt-1 text-sm text-slate-600">Manage all blogs, edit content, and remove posts.</p>
           </div>
           <div className="flex gap-2 text-xs">
             <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-slate-700">
@@ -74,7 +107,10 @@ const AdminBlogsPage = () => {
 
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
           {loading ? (
-            <div className="px-4 py-8 text-sm text-slate-600">Loading blogs...</div>
+            <div className="flex items-center gap-2 px-4 py-8 text-sm text-slate-600">
+              <Spinner className="h-4 w-4" />
+              <span>Loading blogs</span>
+            </div>
           ) : posts.length === 0 ? (
             <div className="px-4 py-8 text-sm text-slate-600">No blogs found.</div>
           ) : (
@@ -101,11 +137,12 @@ const AdminBlogsPage = () => {
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDelete(post)}
+                          onClick={() => setPostToDelete(post)}
                           disabled={isDeleting}
-                          className="rounded-full border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-70"
+                          className="inline-flex items-center gap-2 rounded-full border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-70"
                         >
-                          {isDeleting ? "Deleting..." : "Delete"}
+                          {isDeleting ? <Spinner className="h-4 w-4" /> : null}
+                          <span>Delete</span>
                         </button>
                       </div>
                     </div>

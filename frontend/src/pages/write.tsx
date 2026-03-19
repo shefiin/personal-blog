@@ -1098,7 +1098,7 @@ const WritePage = ({ themeMode, onRegisterPublish, onPublishAvailabilityChange, 
           <button
             type="button"
             onClick={() => coverInputRef.current?.click()}
-            className={`mb-6 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition ${
+            className={`font-jakarta mb-6 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition ${
               isDark
                 ? "border-[#2a2a2a] bg-[#1a1a1a] text-[#B0B0B0] hover:bg-[#222222]"
                 : isBeige
@@ -1116,7 +1116,7 @@ const WritePage = ({ themeMode, onRegisterPublish, onPublishAvailabilityChange, 
 
         {coverImage ? (
           <div className="relative mb-6">
-            <img src={coverImage} alt="Cover preview" className="h-60 w-full rounded-2xl object-cover shadow-sm" />
+            <img src={coverImage} alt="Cover preview" className="block h-auto max-w-full rounded-2xl shadow-sm" />
             <button
               type="button"
               onClick={removeCoverImage}
@@ -1174,7 +1174,7 @@ const WritePage = ({ themeMode, onRegisterPublish, onPublishAvailabilityChange, 
                         className="group/icon relative flex h-8 w-8 items-center justify-center rounded-full border border-slate-300 text-slate-600 transition hover:bg-slate-100"
                       >
                         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="10" r="1.5" /><path d="m21 16-5-5-6 6-2-2-5 5" /></svg>
-                        <span className="pointer-events-none absolute right-full mr-2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover/icon:opacity-100">Image</span>
+                        <span className="font-jakarta pointer-events-none absolute right-full mr-2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover/icon:opacity-100">Image</span>
                       </button>
                       <button
                         type="button"
@@ -1192,7 +1192,7 @@ const WritePage = ({ themeMode, onRegisterPublish, onPublishAvailabilityChange, 
                         className="group/icon relative flex h-8 w-8 items-center justify-center rounded-full border border-slate-300 text-slate-600 transition hover:bg-slate-100"
                       >
                         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M7 11h4v4H7zM13 11h4v4h-4z" /><path d="M11 11V8a3 3 0 0 0-3-3H7M17 11V8a3 3 0 0 0-3-3h-1" /></svg>
-                        <span className="pointer-events-none absolute right-full mr-2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover/icon:opacity-100">Quote</span>
+                        <span className="font-jakarta pointer-events-none absolute right-full mr-2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover/icon:opacity-100">Quote</span>
                       </button>
                       <button
                         type="button"
@@ -1213,7 +1213,7 @@ const WritePage = ({ themeMode, onRegisterPublish, onPublishAvailabilityChange, 
                         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="m8 9-4 3 4 3M16 9l4 3-4 3M14 6l-4 12" />
                         </svg>
-                        <span className="pointer-events-none absolute right-full mr-2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover/icon:opacity-100">Code</span>
+                        <span className="font-jakarta pointer-events-none absolute right-full mr-2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover/icon:opacity-100">Code</span>
                       </button>
                     </div>
                   ) : null}

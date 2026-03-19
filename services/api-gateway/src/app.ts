@@ -27,9 +27,17 @@ app.use((req, res, next) => {
 
 
 
-//admin auth 
-app.use("/api/admin/auth", authProxy);
+app.use("/api/auth", authProxy);
 
+
+app.use("/api/blog/saved-posts", requireUser, blogProxy);
+app.use("/api/blog/posts/:id/engagement", requireUser, blogProxy);
+app.use("/api/blog/posts/:id/like", requireUser, blogProxy);
+app.use("/api/blog/posts/:id/save", requireUser, blogProxy);
+app.use("/api/blog/posts/:id/comments", requireUser, blogProxy);
+app.use("/api/blog/posts/:id/comments/:commentId", requireUser, blogProxy);
+app.use("/api/blog/posts/:id/comments/:commentId/like", requireUser, blogProxy);
+app.use("/api/blog/posts/:id/comments/:commentId/replies", requireUser, blogProxy);
 
 //Blog(public)
 app.use("/api/blog", blogProxy);
@@ -62,4 +70,3 @@ const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
   console.log(`API Gateway running on port ${PORT}`);
 });
-

@@ -1,6 +1,40 @@
 import Post from "../models/post.model.js";
 import { uploadImageBuffer } from "../config/cloudinary.js";
 
+const serializeReply = (reply: any) => ({
+  id: String(reply._id),
+  userId: reply.userId,
+  userName: reply.userName,
+  text: reply.text,
+  createdAt: reply.createdAt
+});
+
+const serializeComment = (comment: any) => ({
+  id: String(comment._id),
+  userId: comment.userId,
+  userName: comment.userName,
+  text: comment.text,
+  createdAt: comment.createdAt,
+  likeCount: Array.isArray(comment.likedBy) ? comment.likedBy.length : 0,
+  replyCount: Array.isArray(comment.replies) ? comment.replies.length : 0,
+  replies: Array.isArray(comment.replies) ? comment.replies.map(serializeReply) : []
+});
+
+const serializePost = (post: any) => {
+  const data = post.toObject ? post.toObject() : post;
+  const likedBy = Array.isArray(data.likedBy) ? data.likedBy : [];
+  const savedBy = Array.isArray(data.savedBy) ? data.savedBy : [];
+  const comments = Array.isArray(data.comments) ? data.comments.map(serializeComment) : [];
+
+  return {
+    ...data,
+    comments,
+    likeCount: likedBy.length,
+    saveCount: savedBy.length,
+    commentCount: comments.length
+  };
+};
+
 const buildSlug = (title: string) =>
   title
     .toLowerCase()
@@ -45,10 +79,13 @@ export const createPost = async (req, res) => {
       status,
       publishedAt: isPublished ? new Date() : null,
       authorId: req.headers["x-user-id"] || "unknown-admin",
-      authorEmail: req.headers["x-user-email"] || ""
+      authorEmail: req.headers["x-user-email"] || "",
+      likedBy: [],
+      savedBy: [],
+      comments: []
     });
 
-    return res.status(201).json(post);
+    return res.status(201).json(serializePost(post));
   } catch (err) {
     console.error("Create post error:", err);
     return res.status(500).json({ message: "Failed to create post" });
@@ -84,7 +121,7 @@ export const listPublishedPosts = async (req, res) => {
     ]);
 
     return res.json({
-      items,
+      items: items.map((item) => serializePost(item)),
       page,
       limit,
       total,
@@ -96,6 +133,29 @@ export const listPublishedPosts = async (req, res) => {
   }
 };
 
+export const listSavedPosts = async (req, res) => {
+  try {
+    const userId = String(req.headers["x-user-id"] || "");
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const items = await Post.find({
+      status: "published",
+      savedBy: userId
+    })
+      .sort({ updatedAt: -1, createdAt: -1 })
+      .lean();
+
+    return res.json({
+      items: items.map((item) => serializePost(item))
+    });
+  } catch (err) {
+    console.error("List saved posts error:", err);
+    return res.status(500).json({ message: "Failed to fetch saved posts" });
+  }
+};
+
 export const getPublishedPostBySlug = async (req, res) => {
   try {
     const { slug } = req.params;
@@ -103,7 +163,7 @@ export const getPublishedPostBySlug = async (req, res) => {
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
     }
-    return res.json(post);
+    return res.json(serializePost(post));
   } catch (err) {
     console.error("Get post error:", err);
     return res.status(500).json({ message: "Failed to fetch post" });
@@ -139,7 +199,7 @@ export const listAdminPosts = async (req, res) => {
     ]);
 
     return res.json({
-      items,
+      items: items.map((item) => serializePost(item)),
       page,
       limit,
       total,
@@ -157,7 +217,7 @@ export const getAdminPostById = async (req, res) => {
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
     }
-    return res.json(post);
+    return res.json(serializePost(post));
   } catch (err) {
     console.error("Admin get post error:", err);
     return res.status(500).json({ message: "Failed to fetch post" });
@@ -188,7 +248,7 @@ export const updatePost = async (req, res) => {
     Object.assign(post, payload);
     await post.save();
 
-    return res.json(post);
+    return res.json(serializePost(post));
   } catch (err) {
     console.error("Update post error:", err);
     return res.status(500).json({ message: "Failed to update post" });
@@ -227,5 +287,272 @@ export const uploadPostImage = async (req, res) => {
   } catch (err) {
     console.error("Upload image error:", err);
     return res.status(500).json({ message: "Failed to upload image" });
+  }
+};
+
+export const getPostEngagement = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id).lean();
+    if (!post || post.status !== "published") {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    const userId = String(req.headers["x-user-id"] || "");
+    const likedBy = Array.isArray(post.likedBy) ? post.likedBy : [];
+    const savedBy = Array.isArray(post.savedBy) ? post.savedBy : [];
+    const comments = Array.isArray(post.comments) ? post.comments.map(serializeComment) : [];
+
+    return res.json({
+      liked: userId ? likedBy.includes(userId) : false,
+      saved: userId ? savedBy.includes(userId) : false,
+      likeCount: likedBy.length,
+      saveCount: savedBy.length,
+      commentCount: comments.length,
+      comments
+    });
+  } catch (err) {
+    console.error("Get post engagement error:", err);
+    return res.status(500).json({ message: "Failed to fetch post engagement" });
+  }
+};
+
+export const togglePostLike = async (req, res) => {
+  try {
+    const userId = String(req.headers["x-user-id"] || "");
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const post = await Post.findById(req.params.id);
+    if (!post || post.status !== "published") {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    const likedBy = Array.isArray(post.likedBy) ? post.likedBy : [];
+    const alreadyLiked = likedBy.includes(userId);
+    post.likedBy = alreadyLiked ? likedBy.filter((id: string) => id !== userId) : [...likedBy, userId];
+    await post.save();
+
+    return res.json({
+      liked: !alreadyLiked,
+      likeCount: post.likedBy.length
+    });
+  } catch (err) {
+    console.error("Toggle like error:", err);
+    return res.status(500).json({ message: "Failed to update like" });
+  }
+};
+
+export const togglePostSave = async (req, res) => {
+  try {
+    const userId = String(req.headers["x-user-id"] || "");
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const post = await Post.findById(req.params.id);
+    if (!post || post.status !== "published") {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    const savedBy = Array.isArray(post.savedBy) ? post.savedBy : [];
+    const alreadySaved = savedBy.includes(userId);
+    post.savedBy = alreadySaved ? savedBy.filter((id: string) => id !== userId) : [...savedBy, userId];
+    await post.save();
+
+    return res.json({
+      saved: !alreadySaved,
+      saveCount: post.savedBy.length
+    });
+  } catch (err) {
+    console.error("Toggle save error:", err);
+    return res.status(500).json({ message: "Failed to update save" });
+  }
+};
+
+export const addPostComment = async (req, res) => {
+  try {
+    const userId = String(req.headers["x-user-id"] || "");
+    const userName = String(req.headers["x-user-name"] || "Reader");
+    const text = String(req.body?.text || "").trim();
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    if (!text) {
+      return res.status(400).json({ message: "Comment text is required" });
+    }
+
+    const post = await Post.findById(req.params.id);
+    if (!post || post.status !== "published") {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    post.comments.unshift({
+      userId,
+      userName,
+      text,
+      likedBy: [],
+      replies: []
+    } as any);
+    await post.save();
+
+    const comments = Array.isArray(post.comments) ? post.comments.map(serializeComment) : [];
+    return res.status(201).json({
+      comments,
+      commentCount: comments.length
+    });
+  } catch (err) {
+    console.error("Add comment error:", err);
+    return res.status(500).json({ message: "Failed to add comment" });
+  }
+};
+
+export const updatePostComment = async (req, res) => {
+  try {
+    const userId = String(req.headers["x-user-id"] || "");
+    const text = String(req.body?.text || "").trim();
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    if (!text) {
+      return res.status(400).json({ message: "Comment text is required" });
+    }
+
+    const post = await Post.findById(req.params.id);
+    if (!post || post.status !== "published") {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    const comment = post.comments.id(req.params.commentId);
+    if (!comment) {
+      return res.status(404).json({ message: "Comment not found" });
+    }
+    if (String(comment.userId) !== userId) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    comment.text = text;
+    await post.save();
+
+    const comments = Array.isArray(post.comments) ? post.comments.map(serializeComment) : [];
+    return res.json({
+      comments,
+      commentCount: comments.length
+    });
+  } catch (err) {
+    console.error("Update comment error:", err);
+    return res.status(500).json({ message: "Failed to update comment" });
+  }
+};
+
+export const deletePostComment = async (req, res) => {
+  try {
+    const userId = String(req.headers["x-user-id"] || "");
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const post = await Post.findById(req.params.id);
+    if (!post || post.status !== "published") {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    const comment = post.comments.id(req.params.commentId);
+    if (!comment) {
+      return res.status(404).json({ message: "Comment not found" });
+    }
+    if (String(comment.userId) !== userId) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    comment.deleteOne();
+    await post.save();
+
+    const comments = Array.isArray(post.comments) ? post.comments.map(serializeComment) : [];
+    return res.json({
+      comments,
+      commentCount: comments.length
+    });
+  } catch (err) {
+    console.error("Delete comment error:", err);
+    return res.status(500).json({ message: "Failed to delete comment" });
+  }
+};
+
+export const toggleCommentLike = async (req, res) => {
+  try {
+    const userId = String(req.headers["x-user-id"] || "");
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const post = await Post.findById(req.params.id);
+    if (!post || post.status !== "published") {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    const comment = post.comments.id(req.params.commentId);
+    if (!comment) {
+      return res.status(404).json({ message: "Comment not found" });
+    }
+
+    const likedBy = Array.isArray(comment.likedBy) ? comment.likedBy : [];
+    const alreadyLiked = likedBy.includes(userId);
+    comment.likedBy = alreadyLiked ? likedBy.filter((id: string) => id !== userId) : [...likedBy, userId];
+    await post.save();
+
+    const comments = Array.isArray(post.comments) ? post.comments.map(serializeComment) : [];
+    return res.json({
+      comments,
+      commentCount: comments.length
+    });
+  } catch (err) {
+    console.error("Toggle comment like error:", err);
+    return res.status(500).json({ message: "Failed to update comment like" });
+  }
+};
+
+export const addCommentReply = async (req, res) => {
+  try {
+    const userId = String(req.headers["x-user-id"] || "");
+    const userName = String(req.headers["x-user-name"] || "Reader");
+    const text = String(req.body?.text || "").trim();
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    if (!text) {
+      return res.status(400).json({ message: "Reply text is required" });
+    }
+
+    const post = await Post.findById(req.params.id);
+    if (!post || post.status !== "published") {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    const comment = post.comments.id(req.params.commentId);
+    if (!comment) {
+      return res.status(404).json({ message: "Comment not found" });
+    }
+
+    comment.replies.unshift({
+      userId,
+      userName,
+      text
+    } as any);
+    await post.save();
+
+    const comments = Array.isArray(post.comments) ? post.comments.map(serializeComment) : [];
+    return res.status(201).json({
+      comments,
+      commentCount: comments.length
+    });
+  } catch (err) {
+    console.error("Add comment reply error:", err);
+    return res.status(500).json({ message: "Failed to add reply" });
   }
 };

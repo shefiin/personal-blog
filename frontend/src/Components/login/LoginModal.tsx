@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { http } from "../../api/http";
+import Spinner from "../common/Spinner";
 
 type LoginModalProps = {
   onClose?: () => void;
@@ -17,7 +18,7 @@ const LoginModal = ({ onClose }: LoginModalProps) => {
     setLoading(true);
 
     try {
-      await http.post("/api/admin/auth/login", {
+      await http.post("/api/auth/login", {
         email,
         password
       });
@@ -67,9 +68,10 @@ const LoginModal = ({ onClose }: LoginModalProps) => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gray-900 text-white py-2 rounded disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded bg-gray-900 py-2 text-white disabled:opacity-60"
           >
-            {loading ? "Logging in..." : "Login"}
+            {loading ? <Spinner className="h-4 w-4" /> : null}
+            <span>Login</span>
           </button>
         </form>
       </div>

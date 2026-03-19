@@ -1,5 +1,59 @@
 import mongoose from "mongoose";
 
+const ReplySchema = new mongoose.Schema(
+  {
+    userId: {
+      type: String,
+      required: true
+    },
+    userName: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    text: {
+      type: String,
+      required: true,
+      trim: true
+    }
+  },
+  {
+    _id: true,
+    timestamps: { createdAt: true, updatedAt: false }
+  }
+);
+
+const CommentSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: String,
+      required: true
+    },
+    userName: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    text: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    likedBy: {
+      type: [String],
+      default: []
+    },
+    replies: {
+      type: [ReplySchema],
+      default: []
+    }
+  },
+  {
+    _id: true,
+    timestamps: { createdAt: true, updatedAt: false }
+  }
+);
+
 const PostSchema = new mongoose.Schema(
   {
     title: {
@@ -46,6 +100,18 @@ const PostSchema = new mongoose.Schema(
     authorEmail: {
       type: String,
       default: ""
+    },
+    likedBy: {
+      type: [String],
+      default: []
+    },
+    savedBy: {
+      type: [String],
+      default: []
+    },
+    comments: {
+      type: [CommentSchema],
+      default: []
     }
   },
   {
