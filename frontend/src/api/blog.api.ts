@@ -78,6 +78,20 @@ export type SavedPostsResponse = {
   items: PostResponse[];
 };
 
+export type ExplainSelectionPayload = {
+  postId: string;
+  postTitle: string;
+  selectedText: string;
+  context?: string;
+  action?: "explain" | "simplify" | "example";
+};
+
+export type ExplainSelectionResponse = {
+  answer: string;
+  action: "explain" | "simplify" | "example";
+  selectedText: string;
+};
+
 export const createAdminPost = (payload: CreatePostPayload) => {
   return http.post<PostResponse>("/api/admin/blog/posts", payload);
 };
@@ -106,6 +120,10 @@ export const listPublishedPosts = (params?: { page?: number; limit?: number }) =
 
 export const listSavedPosts = () => {
   return http.get<SavedPostsResponse>("/api/blog/saved-posts");
+};
+
+export const explainArticleSelection = (payload: ExplainSelectionPayload) => {
+  return http.post<ExplainSelectionResponse>("/api/blog/ai/explain", payload);
 };
 
 export const getPublishedPostBySlug = (slug: string) => {

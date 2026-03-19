@@ -1,4 +1,3 @@
-import { AxiosError } from "axios";
 import { useEffect, useRef, useState } from "react";
 import { FiBookmark, FiCopy, FiEdit2, FiMessageCircle, FiShare2, FiTrash2, FiX } from "react-icons/fi";
 import { FaFacebookF, FaLinkedinIn, FaXTwitter } from "react-icons/fa6";
@@ -6,7 +5,7 @@ import { HiOutlineHeart, HiHeart } from "react-icons/hi2";
 import { Link, useParams } from "react-router-dom";
 import readingTime from "reading-time/lib/reading-time";
 import { getGoogleAuthUrl, getSession } from "../api/auth.api";
-import { addPostComment, deletePostComment, getPostEngagement, getPublishedPostBySlug, togglePostLike, togglePostSave, type PostResponse, updatePostComment } from "../api/blog.api";
+import { addPostComment, deletePostComment, explainArticleSelection, getPostEngagement, getPublishedPostBySlug, togglePostLike, togglePostSave, type PostResponse, updatePostComment } from "../api/blog.api";
 import AuthForm from "../Components/auth/AuthForm";
 import Spinner from "../Components/common/Spinner";
 
@@ -20,6 +19,13 @@ type PostPageProps = {
 };
 
 type AuthModalIntent = "like" | "comment" | "save";
+type AiAction = "explain" | "simplify" | "example";
+
+type SelectionBubbleState = {
+  text: string;
+  top: number;
+  left: number;
+};
 
 const PostPage = ({ themeMode, isUserLoggedIn, userId, userName }: PostPageProps) => {
   const isDark = themeMode === "dark";
@@ -45,6 +51,13 @@ const PostPage = ({ themeMode, isUserLoggedIn, userId, userName }: PostPageProps
   const [editingCommentText, setEditingCommentText] = useState("");
   const [commentActionLoadingId, setCommentActionLoadingId] = useState("");
   const [sessionUserId, setSessionUserId] = useState(userId);
+  const [selectionBubble, setSelectionBubble] = useState<SelectionBubbleState | null>(null);
+  const [aiSelectedText, setAiSelectedText] = useState("");
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [aiAction, setAiAction] = useState<AiAction>("explain");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiAnswer, setAiAnswer] = useState("");
+  const [aiError, setAiError] = useState("");
   const articleRef = useRef<HTMLDivElement | null>(null);
   const shareMenuRef = useRef<HTMLDivElement | null>(null);
   const commentsRef = useRef<HTMLDivElement | null>(null);
@@ -92,12 +105,89 @@ const PostPage = ({ themeMode, isUserLoggedIn, userId, userName }: PostPageProps
     : authModalIntent === "save"
       ? "Create an account to save this story."
       : "Create an account to like for this story.";
+  const aiActionLabel = aiAction === "simplify" ? "Simplify" : aiAction === "example" ? "Give Example" : "Explain";
+
+  const getSelectionContext = (selectedText: string) => {
+    const articleText = articleRef.current?.innerText || "";
+    const normalizedArticleText = articleText.replace(/\s+/g, " ").trim();
+    const normalizedSelection = selectedText.replace(/\s+/g, " ").trim();
+    if (!normalizedArticleText || !normalizedSelection) return selectedText;
+
+    const startIndex = normalizedArticleText.toLowerCase().indexOf(normalizedSelection.toLowerCase());
+    if (startIndex === -1) return normalizedSelection;
+
+    const from = Math.max(0, startIndex - 220);
+    const to = Math.min(normalizedArticleText.length, startIndex + normalizedSelection.length + 220);
+    return normalizedArticleText.slice(from, to).trim();
+  };
+
+  const clearSelectionBubble = () => {
+    setSelectionBubble(null);
+  };
+
+  const inspectSelection = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed || !articleRef.current) {
+      clearSelectionBubble();
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    const anchorNode = range.commonAncestorContainer;
+    if (!articleRef.current.contains(anchorNode)) {
+      clearSelectionBubble();
+      return;
+    }
+
+    const text = selection.toString().replace(/\s+/g, " ").trim();
+    if (!text || text.length < 2) {
+      clearSelectionBubble();
+      return;
+    }
+
+    const rect = range.getBoundingClientRect();
+    if (!rect.width && !rect.height) {
+      clearSelectionBubble();
+      return;
+    }
+
+    const left = Math.min(Math.max(rect.left + rect.width / 2, 72), window.innerWidth - 72);
+    const top = Math.max(rect.top - 48, 88);
+    setSelectionBubble({ text, top, left });
+  };
+
+  const runAiAction = async (action: AiAction, selectedText: string) => {
+    if (!post?._id) return;
+
+    setAiAction(action);
+    setAiLoading(true);
+    setAiError("");
+
+    try {
+      const response = await explainArticleSelection({
+        postId: post._id,
+        postTitle: post.title,
+        selectedText,
+        context: getSelectionContext(selectedText),
+        action
+      });
+      setAiAnswer(response.data.answer);
+    } catch (err: any) {
+      setAiError(err?.response?.data?.message || "Failed to get AI explanation.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   useEffect(() => {
     const onPointerDown = (event: MouseEvent) => {
       const target = event.target as Node;
       if (shareMenuRef.current && !shareMenuRef.current.contains(target)) {
         setShareMenuOpen(false);
+      }
+      const element = event.target as HTMLElement | null;
+      if (!element?.closest("[data-ai-selection]")) {
+        clearSelectionBubble();
       }
     };
 
@@ -120,6 +210,16 @@ const PostPage = ({ themeMode, isUserLoggedIn, userId, userName }: PostPageProps
   const handleShareWindow = (url: string) => {
     window.open(url, "_blank", "noopener,noreferrer,width=640,height=720");
     setShareMenuOpen(false);
+  };
+
+  const handleAskAi = async () => {
+    if (!selectionBubble?.text) return;
+
+    setAiSelectedText(selectionBubble.text);
+    setAiModalOpen(true);
+    setAiAnswer("");
+    await runAiAction("explain", selectionBubble.text);
+    clearSelectionBubble();
   };
 
   const handleGoogleAuth = () => {
@@ -509,6 +609,79 @@ const PostPage = ({ themeMode, isUserLoggedIn, userId, userName }: PostPageProps
               : "bg-[#FBFBFB]"
       }`}
     >
+      {selectionBubble ? (
+        <button
+          type="button"
+          data-ai-selection
+          onClick={handleAskAi}
+          className="font-jakarta fixed z-[60] inline-flex -translate-x-1/2 items-center rounded-full border border-black bg-white px-3 py-1.5 text-sm font-medium text-black shadow-[0_10px_30px_rgba(15,23,42,0.16)] transition hover:bg-black hover:text-white"
+          style={{ top: selectionBubble.top, left: selectionBubble.left }}
+        >
+          Ask AI
+        </button>
+      ) : null}
+
+      {aiModalOpen ? (
+        <div className="fixed inset-0 z-[65] flex items-center justify-center bg-black/40 px-4 py-6">
+          <div className="font-jakarta relative w-full max-w-2xl rounded-lg border border-slate-200 bg-white px-6 py-6 shadow-[0_24px_70px_rgba(15,23,42,0.18)]">
+            <button
+              type="button"
+              onClick={() => {
+                setAiModalOpen(false);
+                setAiSelectedText("");
+                setAiAnswer("");
+                setAiError("");
+              }}
+              aria-label="Close AI modal"
+              className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full text-[#6B6B6B] transition hover:bg-slate-100 hover:text-black"
+            >
+              <FiX className="h-4 w-4" />
+            </button>
+
+            <div className="pr-10">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8a7d69]">AI Assist</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#171717]">Selected text explanation</h2>
+              <p className="mt-4 rounded-2xl bg-[#f7f2ea] px-4 py-3 text-sm leading-7 text-[#3e3527]">
+                {aiSelectedText}
+              </p>
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              {(["explain", "simplify", "example"] as AiAction[]).map((action) => (
+                <button
+                  key={action}
+                  type="button"
+                  onClick={() => {
+                    const selectedText = aiSelectedText;
+                    if (selectedText) {
+                      void runAiAction(action, selectedText);
+                    }
+                  }}
+                  className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+                    aiAction === action ? "bg-black text-white" : "bg-[#f3f4f6] text-[#1f2937] hover:bg-[#e5e7eb]"
+                  }`}
+                >
+                  {action === "simplify" ? "Simplify" : action === "example" ? "Example" : "Explain"}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-5 min-h-40 rounded-2xl border border-slate-200 bg-white px-4 py-4">
+              {aiLoading ? (
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <Spinner className="h-4 w-4" />
+                  <span>{aiActionLabel} with AI</span>
+                </div>
+              ) : aiError ? (
+                <p className="text-sm text-red-600">{aiError}</p>
+              ) : (
+                <p className="text-sm leading-7 text-slate-700 whitespace-pre-wrap">{aiAnswer}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {authModalOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6">
           <div className="font-jakarta relative w-full max-w-[600px] rounded-lg border border-[#ece4d8] bg-white px-6 py-8 shadow-[0_24px_70px_rgba(15,23,42,0.18)]">
@@ -669,6 +842,8 @@ const PostPage = ({ themeMode, isUserLoggedIn, userId, userName }: PostPageProps
         {post.coverImage ? <img src={post.coverImage} alt={post.title} className="mb-8 block h-auto max-w-full shadow-sm" /> : null}
         <div
           ref={articleRef}
+          onMouseUp={inspectSelection}
+          onTouchEnd={() => window.setTimeout(inspectSelection, 50)}
           className={`read-article prose mt-10 max-w-none text-xl leading-10 prose-headings:tracking-tight prose-img:rounded-xl prose-figure:my-12 ${
             isDark
               ? "prose-invert text-[#B0B0B0]"
